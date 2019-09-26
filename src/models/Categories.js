@@ -7,10 +7,10 @@ const Categories = new mongoose.Schema({
       required: true,
       default: ''
     },
-    children :[{
+    imageUrl :{
       name : String,
       default: ''
-    }]
+    }
 }, {
     timestamps : true
 });

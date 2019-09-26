@@ -33,7 +33,8 @@ const ProductSchema = new mongoose.Schema({
         type:String,
         default: ''
     },image:{
-        type:Array,
+        type:String,
+        default: ''
     },rate:{
         type: Number,
         default: 0

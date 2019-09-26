@@ -1,14 +1,16 @@
 'use strict';
-const response = require('../helpers/response')
+const response = require('../libs/response')
 const ProductsModel = require('../models/Products')
 const CategoriesModel = require('../models/Categories')
-
+const fs = require('fs')
+const app = require('../../app')
 const _ = require('lodash');
-// const helper = require('../helpers/Auth');
+const helper = require('../libs/helper');
+
 exports.getProducts = async (req, res) => {
 
   let search = req.query.search ? req.query.search : '';
-  let limit = req.query.limit ? parseInt(req.query.limit) : 10;
+  let limit = req.query.limit ? parseInt(req.query.limit) : 100;
   let filter = req.query.filter ? req.query.filter : 'updateAt';
   let page = req.query.page ? parseInt(req.query.page) : 1;
   let offset = (page - 1) * limit;
@@ -29,20 +31,31 @@ exports.getProducts = async (req, res) => {
   .limit(limit)
   .skip(offset)
   .then(data => {
-    let json = {
-      status : 200,
-      message : 'success get data products',
-      totalRows,
-      limit,
-      page,
-      totalPage,
-      data
-    };
-    response.success(json, res)
+    if (data.length > 0) {
+      app.client.setex('products', 120, JSON.stringify(data))
+      let json = {
+        status : 200,
+        error: false,
+        message : 'success get data products',
+        totalRows,
+        limit,
+        page,
+        totalPage,
+        data
+      };
+      response.success(json, res)
+    }else{
+      res.status(404).json({
+				status: 404,
+				error: true,
+				message: 'Products not found'
+			})
+    }
   })
   .catch(err => {
     let json = {
       status : 500,
+      error: true,
       message : 'Error get data products'
     };
     response.withCode(500,'failed', json, res)
@@ -62,14 +75,13 @@ exports.getById = async (req, res) => {
 }
 
 exports.addProduct = async function(req, res) {
-  // const token = helper.decodeJwt(req.header('x-auth-token'))
+  const token = helper.decodeJwt(req.header('authorization'))
 
-  // if(!token._id){
-  //   return response.error('error get data seller', res)
-  // }
+  if(!token._id){
+    return response.error('error get data seller', res)
+  }
 
-  // let usersId = token._id;
-  let usersId = 'iduser1';
+  let usersId = token._id;
   let status = 'visible';
 
   //input from request
@@ -78,7 +90,9 @@ exports.addProduct = async function(req, res) {
   let price = req.body.price;
   let stock = req.body.stock;
   let weight = req.body.weight;
-  let image = req.body.image;
+  let image = req.file.filename;
+  // let image = 'http://192.168.43.134:8080/products/images/' + req.file.filename;
+  // let image = 'http://192.168.0.130:8080/products/images/' + req.file.filename;
   let rate = req.body.rate;
   let description = req.body.description;
   try{
@@ -108,6 +122,7 @@ exports.addProduct = async function(req, res) {
     .then(data => {
       let json = {
         status : 200,
+        error: false,
         message : 'success add data product',
         data : data
       };
@@ -125,33 +140,38 @@ exports.addProduct = async function(req, res) {
 exports.deleteProduct = async (req, res) => {
   let id = req.params.id
 
-  // const token = helper.decodeJwt(req.header('x-auth-token'));
-  //
-  // if (!token._id) {
-  //     return response.error('error get data seller', res);
-  // }
-  //
-  // let usersId = token._id;
+  const token = helper.decodeJwt(req.header('authorization'));
+
+  if (!token._id) {
+      return response.error('error get data seller', res);
+  }
+
+  let usersId = token._id;
   let del = {
     _id : id
   }
-
-  try{
-    ProductsModel.deleteOne(del, function (err, obj) {
-      if(err) {
-        return response.error('error delete product', res)
-      } else {
-        return response.success('product deleted', res)
-      }
-    });
-  }catch (e) {
-    return response.error('error delete product', res)
-  }
+  ProductsModel.findOneAndRemove(del)
+  .then(data => {
+    if(data){
+      // fs.unlinkSync(app.rootPath + '/uploads/products/' + data.image.substr(43))//in server 192.168.43.134
+      fs.unlinkSync(app.rootPath + '/uploads/products/' + data.image)//in server 192.168.0.130
+      return response.success('product deleted', res)
+    }
+    else{
+      return response.error('error delete product', res)
+    }
+  })
 }
 
 exports.updateProduct = async (req, res) => {
   let id = req.params.id;
   let update = {}
+
+  const token = helper.decodeJwt(req.header('authorization'));
+
+  if (!token._id) {
+      return response.error('error get data seller', res);
+  }
 
   Object.keys(req.body).forEach(function(key) {
     if(key == 'name') {
@@ -166,8 +186,6 @@ exports.updateProduct = async (req, res) => {
       update['weight'] = req.body.weight
     }else if(key == 'status'){
       update['status'] = req.body.status
-    }else if(key == 'image'){
-      update['image'] = req.body.status
     }else if(key == 'rate'){
       update['rate'] = req.body.rate
     }else if(key == 'description'){
@@ -175,9 +193,12 @@ exports.updateProduct = async (req, res) => {
     }
   });
 
+
   ProductsModel.findOneAndUpdate({_id : id}, update)
     .then(data => {
       let json = {
+        status: 200,
+        error: false,
         message: 'success update product',
         data: data
       }
@@ -185,5 +206,61 @@ exports.updateProduct = async (req, res) => {
     })
     .catch(e => {
       response.error('error update product ' + e, res)
+    })
+}
+
+exports.updatePhotoProduct = async (req, res) => {
+  let id = req.params.id;
+  let update = {}
+
+  const token = helper.decodeJwt(req.header('authorization'));
+
+  if (!token._id) {
+      return response.error('error get data seller', res);
+  }
+
+
+  // if(req.body.image){
+    // let image = '192.168.43.134:8080/products/images/' + req.file.filename;
+    // let image = '192.168.0.130:8080/products/images/' + req.file.filename;
+    let image = req.file.filename;
+  ProductsModel.findOneAndUpdate({_id : id}, {image : image})
+    .then(data => {
+      let json = {
+        status: 200,
+        error: false,
+        message: 'success update photo product',
+        data: data
+      }
+      response.success(json, res)
+    })
+    .catch(e => {
+      response.error('error update photo product ' + e, res)
+    })
+}
+
+exports.addQtyProduct = async (req, res) => {
+    let id = req.params.id
+    let counter = 0
+    let message = ''
+    if(req.body.action === 'add'){
+      counter = 1
+      message = 'added'
+    }else if(req.body.action === 'reduce'){
+      counter = -1
+      message = 'reduced'
+    }
+
+    ProductsModel.updateOne({_id : id}, {$inc: {stock : counter}})
+    .then(data => {
+      console.log(data)
+        let json = {
+            status: 200,
+            error:false,
+            message: 'success ' + message + ' in product with id ' + id,
+        };
+        return response.success(json, res)
+    }).catch(e=>{
+        response.error('cannot add or reduce',res)
     })
 }

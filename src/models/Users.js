@@ -33,10 +33,6 @@ const UsersSchema = new mongoose.Schema({
       type: String,
       default: ''
     },
-    referral: {
-      type: String,
-      default: ''
-    },
     birth: {
       type: String,
       default: ''
@@ -52,8 +48,8 @@ const UsersSchema = new mongoose.Schema({
     wishlist:[
       {
         productId: [{
-          type: mongoose.Schema.Type.ObjectId,
-          ref: 'Product'
+          type: String,
+          ref: 'Products'
         }]
       }],
     carts: [{

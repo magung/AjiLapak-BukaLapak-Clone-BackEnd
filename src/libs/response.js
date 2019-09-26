@@ -1,11 +1,11 @@
 'use strict';
 
-exports.success = function (values, res) {
-  const data = {
-    status : 'success',
-    error : false,
-    value : values
-  };
+exports.success = function (data, res) {
+  // const data = {
+  //   status : 'success',
+  //   error : false,
+  //   value : values
+  // };
   res.status(200);
   res.json(data);
   res.end()
@@ -13,9 +13,9 @@ exports.success = function (values, res) {
 
 exports.error = function (string, res) {
   const data = {
-    status : 'failed',
+    status : 400,
     error : true,
-    values : string
+    message : string
   };
   res.status(400);
   res.json(data);

@@ -1,7 +1,7 @@
 'use strict';
-const response = require('../helpers/response')
+const response = require('../libs/response')
 const CategoriesModels = require('../models/Categories')
-
+const app = require('../../app')
 exports.getCategories = async (req, res) => {
   let id = req.query.id;
 
@@ -9,6 +9,7 @@ exports.getCategories = async (req, res) => {
     await CategoriesModels.find()
       .sort({createAt: 'desc'})
       .then(data => {
+          app.client.setex('categories', 120, JSON.stringify(data))
         let json = {
           status: 200,
           message: 'success get data categories',
@@ -46,59 +47,8 @@ exports.getCategories = async (req, res) => {
 exports.addCategories = async function (req, res){
   CategoriesModels.create([
         {
-            name: 'Handphone',
-            children:
-                [
-                    {name: 'Spare Part & Tools Handphone'},
-                    {name: 'Virtual Reality'},
-                    {name: 'Smartwatch'},
-                    {name: 'HP & Smartphone'},
-                    {name: 'Tablet'},
-                ]
-        }, {
-            name: 'Komputer',
-            children:
-                [
-                    {name: 'Hardware'},
-                    {name: 'Mini PC'},
-                    {name: 'Desktop'},
-                    {name: 'Laptop'},
-                    {name: 'Server'},
-                    {name: 'Printer'},
-                ]
-        }, {
-            name: 'Elektronik',
-            children:
-                [
-                    {name: 'Walkie Talkie'},
-                    {name: 'Media Player & Set Top Box'},
-                    {name: 'Komponen Elektronik'},
-                    {name: 'Aksesoris TV & Video'},
-                    {name: 'Voice Recorder'},
-                    {name: 'Televisi'},
-                ]
-        }, {
-            name: 'Kamera',
-            children:
-                [
-                    {name: 'Action Camera'},
-                    {name: 'Drone'},
-                    {name: 'Kamera Digital'},
-                    {name: 'Handycam'},
-                    {name: 'Kamera Analog'},
-                    {name: 'CCTV'},
-                ]
-        }, {
-            name: 'Olahraga',
-            children:
-                [
-                    {name: 'Surfing & Diving'},
-                    {name: 'Lari'},
-                    {name: 'Badminton'},
-                    {name: 'Renang'},
-                    {name: 'Pancing'},
-                    {name: 'Tenis'},
-                ]
+            name: 'Mobil, Part dan Aksesoris',
+            imageUrl: 'https://www.bukalapak.com/uploads/category/19/original/Prodak_Kategori_13.jpg'
         }
     ]).then(user => {
         res.json(user)
